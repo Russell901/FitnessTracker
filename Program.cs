@@ -37,9 +37,9 @@ namespace FitnessTracker
             }
 
             // Create main form with dependencies
-            var mainForm = serviceProvider.GetRequiredService<MainForm>();
+            var initial = serviceProvider.GetRequiredService<LoginForm>();
 
-            Application.Run(mainForm);
+            Application.Run(initial);
         }
 
         private static void ConfigureServices(IServiceCollection services)
@@ -48,7 +48,7 @@ namespace FitnessTracker
             var dbPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "FitnessTracker",
-                "app.db");
+                "fitness_app.db");
 
             // Ensure the directory exists
             Directory.CreateDirectory(Path.GetDirectoryName(dbPath));
@@ -56,7 +56,7 @@ namespace FitnessTracker
             // Register DbContext with proper configuration
             services.AddDbContext<AppDbContext>(options =>
                 options.UseSqlite($"Data Source={dbPath}"),
-                ServiceLifetime.Singleton); // Using Singleton for WinForms
+                ServiceLifetime.Singleton);
 
             // Register repositories
             services.AddSingleton<IUserRepository, UserRepository>();
@@ -66,9 +66,12 @@ namespace FitnessTracker
 
             // Register ViewModels
             services.AddTransient<MainViewModel>();
+            services.AddTransient<UserViewModel>();
 
             // Register Forms
             services.AddTransient<MainForm>();
+            services.AddTransient<LoginForm>();
+            services.AddTransient<RegistrationForm>();
         }
     }
 }

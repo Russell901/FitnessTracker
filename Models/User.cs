@@ -1,11 +1,12 @@
 ﻿
+using SQLite;
 using System.ComponentModel.DataAnnotations;
 
 namespace FitnessTracker.Models
 {
     public class User
     {
-        [Key]
+        [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
 
         [Required]
@@ -13,5 +14,7 @@ namespace FitnessTracker.Models
 
         [Required]
         public string PasswordHash { get; set; }
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

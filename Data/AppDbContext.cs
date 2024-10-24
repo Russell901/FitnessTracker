@@ -12,18 +12,13 @@ namespace FitnessTracker.Data
         {
         }
 
-        //protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        //{
-        //    var dbPath = Path.Combine(
-        //        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        //        "FitnessTracker",
-        //        "tracker.db");
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
 
-        //    // Create directory if it doesn't exist
-        //    var folder = Path.GetDirectoryName(dbPath);
-        //    Directory.CreateDirectory(folder);
-
-        //    optionsBuilder.UseSqlite($"Data Source={dbPath}");
-        //}
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Username)
+                .IsUnique();
+        }
     }
 }

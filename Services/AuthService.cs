@@ -1,7 +1,6 @@
 ﻿using FitnessTracker.Interfaces;
 using FitnessTracker.Models;
-using System.Security.Cryptography;
-using System.Text;
+using FitnessTracker.Utilities;
 
 namespace FitnessTracker.Services
 {
@@ -11,51 +10,106 @@ namespace FitnessTracker.Services
 
         public AuthService(IUserRepository userRepository)
         {
-            _userRepository = userRepository;
+            _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         }
 
         public async Task<bool> RegisterUserAsync(string username, string password)
         {
-            if (await _userRepository.UserExistsAsync(username))
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+                return false;
+
+            try
             {
+                if (!userValidator.IsValidUsername(username))
+                {
+                    MessageBox.Show("Username must contain only letters and numbers.");
+                    return false;
+                }
+
+                if (!userValidator.IsValidPassword(password))
+                {
+                    MessageBox.Show("Password must be at least 12 characters and contain both uppercase and lowercase letters.");
+                    return false;
+                }
+
+                var existingUser = await _userRepository.GetByUsernameAsync(username);
+                if (existingUser != null)
+                {
+                    MessageBox.Show("Username already exists.");
+                    return false;
+                }
+
+                string hashedPassword = PasswordHash.HashPassword(password);
+                var newUser = new User
+                {
+                    Username = username,
+                    PasswordHash = hashedPassword,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                bool success = await _userRepository.AddAsync(newUser);
+                if (success)
+                {
+                    MessageBox.Show("User created successfully!");
+                    return true;
+                }
+
+                MessageBox.Show("Failed to create user. Please try again.");
                 return false;
             }
-
-            var hashedPassword = HashPassword(password);
-            var user = new User
+            catch (Exception ex)
             {
-                Username = username,
-                PasswordHash = hashedPassword
-            };
-
-            return await _userRepository.CreateUserAsync(user);
+                // Log the exception if you have logging configured
+                MessageBox.Show("An error occurred during registration.");
+                return false;
+            }
         }
 
         public async Task<bool> LoginAsync(string username, string password)
         {
-            var user = await _userRepository.GetUserByUsernameAsync(username);
-            if (user == null)
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+                return false;
+
+            try
             {
+                var user = await _userRepository.GetByUsernameAsync(username);
+                if (user == null)
+                {
+                    MessageBox.Show("Invalid username or password.");
+                    return false;
+                }
+
+                if (!PasswordHash.VerifyPassword(password, user.PasswordHash))
+                {
+                    MessageBox.Show("Invalid username or password.");
+                    return false;
+                }
+
+                MessageBox.Show("Login successful!");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // Log the exception if you have logging configured
+                MessageBox.Show("An error occurred during login.");
                 return false;
             }
-
-            return VerifyPassword(password, user.PasswordHash);
         }
 
-        private string HashPassword(string password)
+        // method for changing password
+        public async Task<bool> ChangePasswordAsync(string username, string oldPassword, string newPassword)
         {
-            using (var sha256 = SHA256.Create())
-            {
-                var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-                return BitConverter.ToString(hashedBytes).Replace("-", "").ToLower();
-            }
-        }
+            var user = await _userRepository.GetByUsernameAsync(username);
+            if (user == null) return false;
 
-        private bool VerifyPassword(string password, string storedHash)
-        {
-            return HashPassword(password) == storedHash;
+            if (!PasswordHash.VerifyPassword(oldPassword, user.PasswordHash))
+                return false;
+
+            if (!userValidator.IsValidPassword(newPassword))
+                return false;
+
+            user.PasswordHash = PasswordHash.HashPassword(newPassword);
+            return await _userRepository.UpdateAsync(user);
         }
     }
-
-
 }
